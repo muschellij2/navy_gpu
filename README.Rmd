@@ -2,7 +2,9 @@
 title: "USNA GPU Project Details"
 author: "John Muschelli"
 date: "6/12/2018"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 bibliography: navy_gpu.bib
 ---
 
@@ -11,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # FLEXCONN
-The [FLEXCONN](https://www.nitrc.org/projects/flexconn) software v1.1 from  @roy2018multipl is located at https://www.nitrc.org/projects/flexconn.  The `README.txt` indicates to install the necessary requirements:
+The [FLEXCONN](https://www.nitrc.org/projects/flexconn) software v1.1 from  @roy2018multiple is located at https://www.nitrc.org/projects/flexconn.  The `README.txt` indicates to install the necessary requirements:
 
 ```python
 pip install -r requirements.txt
