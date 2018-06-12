@@ -1,0 +1,119 @@
+---
+title: "USNA GPU Project Details"
+author: "John Muschelli"
+date: "6/12/2018"
+output: html_document
+bibliography: navy_gpu.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# FLEXCONN
+The [FLEXCONN](https://www.nitrc.org/projects/flexconn) software v1.1 from  @roy2018multipl is located at https://www.nitrc.org/projects/flexconn.  The `README.txt` indicates to install the necessary requirements:
+
+```python
+pip install -r requirements.txt
+```
+which includes `tensorflow_gpu`, which indicates GPU units are required. 
+
+# Image Processing in R
+
+The [`extrantsr`](https://github.com/muschellij2/extrantsr) and [`smri.process`](https://github.com/muschellij2/smri.process) packages perform a lot of the image processing required to get the raw data into a form for FLEXCONN.  These packages rely on [`ANTsR`](https://github.com/ANTsX/ANTsR), a large C++-based library that has been wrapped in R.  It takes a long time to compile.
+
+To install these packages in `R`, you must:
+1) Install R from https://cran.r-project.org/.
+2) Install the `remotes` package by:
+```r
+install.packages("remotes")
+```
+3) Install the packages using:
+```r
+remotes::install_github("muschellij2/smri.process")
+```
+
+There may be an easier way to install these using [Neuroconductor](https://neuroconductor.org/) [@muschelli2018neuroconductor] by the following command:
+
+```r
+source("https://neuroconductor.org/neurocLite.R")
+
+# From the Latest Release on NeuroC
+neuro_install('smri.process', release = "stable", release_repo = latest_neuroc_release(release = "stable")) 
+```
+4) Download the data
+The [`msmri` package](https://github.com/muschellij2/msmri) has download functions to download data from http://johnmuschelli.com/open_ms_data/.  Install this package using:
+```r
+remotes::install_github("muschellij2/msmri")
+```
+
+
+## Third Party software
+
+The above tools also rely on [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki) [@jenkinson_fsl_2012], which is a neuroimaging software suite.  It can be downloaded at https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation and installed using the `python` installer script.  Be aware aware the defaults are for a global installation, therefore requiring `root` privileges.
+
+## Details of Image Processing
+
+Namely, the 5 steps required are:
+1) Inhomogeneity correction using N4 [@tustison_n4itk_2010].  
+2) Skull Stripping.  The `extrantsr::malf` function will perform this, which is wrapped in `smri.process::smri_prenormalize`.
+3) Image registration: aligning the T1-weighted, FLAIR and other imaging sequences in the same space.
+4) Inhomogeneity correction on the brain-only image.  
+5) Resampling the data to a 1x1x1 grid or registering it to a template.
+
+The `raw` data from the open MS data needs these steps performed, but the 
+`coregistered` data do not, as these have are "Spatially co-registered and bias corrected T1, T2, FLAIR images)" according to http://lit.fe.uni-lj.si/tools.php?lang=eng.  Therefore, we will use the `coregistered` data, but may re-run these processing steps on the raw data in the future.
+
+
+## Downloading One Subject
+
+To download subject `1`, we can use the following code
+```{r}
+library(msmri)
+dl = download_ms_patient(1, cohort = "cross_sectional", data = "coregistered")
+names(dl) = neurobase::nii.stub(dl, bn = TRUE)
+dl
+```
+
+The data includes a brain mask (`brainmask.nii.gz`), "ground truth" (`consensus_gt.nii.gz`), FLAIR (`FLAIR.nii.gz`), T1-weighted image (`T1W.nii.gz`), T1-weighted image post injection (`T1WKS.nii.gz`), and T2-weighted image (`T2W.nii.gz`) images.  The FLEXCONN model used only FLAIR and T1-weighted images to predict the ground truth.
+
+
+Here we see (by default) the data is downloaded into a temporary directory.  To change the output directly, one must pass in a directory path using the `outdir` argument.  For example:
+```r
+outdir = "/path/to/where/you/want/data"
+dl = download_ms_patient(1, cohort = "cross_sectional", data = "coregistered", outdir = outdir)
+names(dl) = neurobase::nii.stub(dl, bn = TRUE)
+```
+
+### Resampling Images
+All the processing steps have been completed on the data except for the resampling and applying the brain mask to the data.  
+
+```r
+library(neurobase)
+imgs = check_nifti(dl)
+imgs = lapply(imgs, mask_img, mask = imgs$brain_mask)
+```
+
+
+For this, we can use the `resample_image` function for the brain images:
+
+```r
+library(extrantsr)
+out_img = resample_image(imgs$FLAIR, parameters = c(1,1,1), interpolator = "linear")
+```
+
+which we can use different interpolators.  We must write out the image back to disk if we want to use it with `FLEXCONN`:
+
+```r
+library(neurobase)
+fname = file.path(dirname(dl["FLAIR"]), "FLAIR_1x1x1.nii.gz")
+write_nifti(out_img, filename = fname)
+```
+or in whatever `outdir` you want.
+
+We use a `nearestneighbor` interpolator for the binary images of the ground truth and the brain mask, similarly to the code here:
+
+```r
+out_img = resample_image(dl["consensus_gt"], parameters = c(1,1,1), interpolator = "nearestneighbor")
+```
+
