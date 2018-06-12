@@ -68,7 +68,7 @@ The `raw` data from the open MS data needs these steps performed, but the
 ## Downloading One Subject
 
 To download subject `1`, we can use the following code
-```{r}
+```{r, cache = TRUE}
 library(msmri)
 dl = download_ms_patient(1, cohort = "cross_sectional", data = "coregistered")
 names(dl) = neurobase::nii.stub(dl, bn = TRUE)
