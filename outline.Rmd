@@ -1,0 +1,42 @@
+---
+title: "USNA GPU Project Outline"
+author: "John Muschelli"
+date: "6/12/2018"
+output: html_document
+bibliography: navy_gpu.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Goals
+The goals of the project are:
+
+1.  Have USNA affiliates take [Neurohacking course](https://www.coursera.org/learn/neurohacking) and go through modules on updated materials at http://johnmuschelli.com/imaging_in_r/.
+2.  Use open MRI data for patients with MS using [FLEXCONN](https://www.nitrc.org/projects/flexconn) segmentation algorithm on GPU unit.
+3.  Adapt processing of MRI data to potentially increase accuracy of the model.
+
+
+# Motivation
+
+Recently, a method from @roy2018multiple was published (https://arxiv.org/abs/1803.09172), called [FLEXCONN](https://www.nitrc.org/projects/flexconn).  The authors have published the Python scripts in the above link for the method.  The method is based on Tensforflow, but mainly uses the Keras wrapper/implementation (https://github.com/keras-team/keras).   The method **requires GPUs** to compute the neural network.
+
+## Description of the Problem
+
+The data use images of the brain from patients with multiple sclerosis.  The goal of the method is to take images patients had taken of them and output an image of where the lesions occur.  The model/neural network is trained on a manual segmentation, where a rater/doctor went through and traced areas of the brain image where he/she determined lesions.  The data is in the NIfTI format, a commonly used neuroimaging format, and should have the extension `.nii` or `.nii.gz`.
+
+## Description of the Data from FLEXCONN
+
+The authors use an open (after data agreement) from the following data challenge: https://www.nitrc.org/projects/longitudinal_ms.  The training data can be downloaded from https://smart-stats-tools.org/lesion-challenge after creating an account and logging in and going to https://smart-stats-tools.org/lesion-challenge-2015.  The data consists of 21 images from 5 training subjects which had the manual segmentations. These trained models are packaged in the FLEXCONN software.  
+
+The results of the method show great promise and seems to have validity outside of the data it was trained on.  One issue with the above-mentioned paper is that it does not show how the results work on an **open** data set.
+
+## Description of test data
+Data from http://lit.fe.uni-lj.si/tools.php?lang=eng contain the data outlined in @lesjak2017novel.  This data has 30 patients with MS with manual segmentations.  There is an additional longitudinal data set on the site as well corresponding to the work of @lesjak2016validation. This data is openly available and licensed CC-BY, so it can be distributed, derived, and distributed.  As such, the data has been re-packed on http://johnmuschelli.com/open_ms_data/.  To make this easily downloaded, an `R` package `msmri` was created and is hosted at https://github.com/muschellij2/msmri. 
+
+The goal of 2) above is to:
+1.  Apply FLEXCONN on the 30 subjects and calculate metrics of segmentation, such as the Dice Coefficient, lesion false positive rate (LFPR), positive predictive value (PPV), and volume difference (VD) as in @roy2018multiple.  
+2.  Re-train FLEXCONN using 15 of the subjects and test/validate the method on the other 15.  
+3.  Determine any processing steps/normalization methods that can improve 1) or 2).
+
