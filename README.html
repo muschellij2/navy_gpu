@@ -1730,7 +1730,7 @@ names(dl) = neurobase::nii.stub(dl, bn = TRUE)</code></pre>
 <p>All the processing steps have been completed on the data except for the resampling and applying the brain mask to the data.</p>
 <pre class="r"><code>library(neurobase)
 imgs = check_nifti(dl)
-imgs = lapply(imgs, mask_img, mask = imgs$brain_mask)</code></pre>
+imgs = lapply(imgs, mask_img, mask = imgs$brainmask)</code></pre>
 <p>For this, we can use the <code>resample_image</code> function for the brain images:</p>
 <pre class="r"><code>library(extrantsr)
 out_img = resample_image(imgs$FLAIR, parameters = c(1,1,1), interpolator = &quot;linear&quot;)</code></pre>
@@ -1741,6 +1741,20 @@ write_nifti(out_img, filename = fname)</code></pre>
 <p>or in whatever <code>outdir</code> you want.</p>
 <p>We use a <code>nearestneighbor</code> interpolator for the binary images of the ground truth and the brain mask, similarly to the code here:</p>
 <pre class="r"><code>out_img = resample_image(dl[&quot;consensus_gt&quot;], parameters = c(1,1,1), interpolator = &quot;nearestneighbor&quot;)</code></pre>
+</div>
+<div id="registering-images-to-template" class="section level3">
+<h3>Registering Images to Template</h3>
+<p>Although we could resample the images to 1x1x1, they may be required to be oriented in the same way as the MNI template, which was done in the FLEXCONN paper. Here, we will use a package that contains the MNI template:</p>
+<pre class="r"><code>source(&quot;https://neuroconductor.org/neurocLite.R&quot;)
+neuro_install('MNITemplate')</code></pre>
+<p>Here we can perform a <a href="http://cind.ucsf.edu/sites/cind.ucsf.edu/files/wysiwyg/education/RigidRegistration.pdf">rigid-body transformation</a> from the T1-weigthed image to the MNI template, which is also T1-weighted.</p>
+<pre class="r"><code>library(extrantsr)
+temp_file = MNITemplate::getMNIPath(what = &quot;Brain&quot;, res = &quot;1mm&quot;)
+reg = registration(filename = imgs$T1W, template.file = temp_file)
+out_imgs = lapply(imgs, ants_apply_transforms,
+              fixed = temp_file,
+              transformlist = reg$fwdtransforms, 
+              interpolator = &quot;Linear&quot;)</code></pre>
 <div id="refs" class="references">
 <div id="ref-jenkinson_fsl_2012">
 <p>Jenkinson, Mark, Christian F. Beckmann, Timothy E. J. Behrens, Mark W. Woolrich, and Stephen M. Smith. 2012. “FSL.” <em>NeuroImage</em> 62 (2):782–90. <a href="https://doi.org/10.1016/j.neuroimage.2011.09.015" class="uri">https://doi.org/10.1016/j.neuroimage.2011.09.015</a>.</p>

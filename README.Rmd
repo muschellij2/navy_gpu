@@ -93,9 +93,8 @@ All the processing steps have been completed on the data except for the resampli
 ```r
 library(neurobase)
 imgs = check_nifti(dl)
-imgs = lapply(imgs, mask_img, mask = imgs$brain_mask)
+imgs = lapply(imgs, mask_img, mask = imgs$brainmask)
 ```
-
 
 For this, we can use the `resample_image` function for the brain images:
 
@@ -119,3 +118,23 @@ We use a `nearestneighbor` interpolator for the binary images of the ground trut
 out_img = resample_image(dl["consensus_gt"], parameters = c(1,1,1), interpolator = "nearestneighbor")
 ```
 
+### Registering Images to Template
+
+Although we could resample the images to 1x1x1, they may be required to be oriented in the same way as the MNI template, which was done in the FLEXCONN paper.  Here, we will use a package that contains the MNI template:
+
+```r
+source("https://neuroconductor.org/neurocLite.R")
+neuro_install('MNITemplate')
+```
+
+Here we can perform a [rigid-body transformation](http://cind.ucsf.edu/sites/cind.ucsf.edu/files/wysiwyg/education/RigidRegistration.pdf) from the T1-weigthed image to the MNI template, which is also T1-weighted.  
+
+```r
+library(extrantsr)
+temp_file = MNITemplate::getMNIPath(what = "Brain", res = "1mm")
+reg = registration(filename = imgs$T1W, template.file = temp_file)
+out_imgs = lapply(imgs, ants_apply_transforms,
+              fixed = temp_file,
+              transformlist = reg$fwdtransforms, 
+              interpolator = "Linear")
+```
